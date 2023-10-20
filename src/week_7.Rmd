@@ -7,17 +7,153 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+library(janitor)
+library(tidyverse)
+
+ist_data <- read.csv(file = "../data/IST.csv")
+ist_data <-  clean_names(ist_data)
 ```
 
-## R Markdown
+## T-test Paired
+```{r t_test_paired}
+ttest_data <-  ist_data %>% 
+  filter(sex == "M") %>% 
+  filter(stype %in% c("TACS", "LACS"))
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+ttest_result <-  ttest_data %>% 
+  t.test(rsbp ~ stype, data = .)
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+ttest_result
+  
 ```
+## Anova
+```{r anova}
+
+ist_data %>% 
+  filter(sex == "M") %>% 
+  ggplot(aes(x = stype, y = rsbp))+
+  geom_boxplot()
+
+ist_data %>% 
+  filter(sex == "F") %>% 
+  ggplot(aes(x = stype, y = rsbp))+
+  geom_boxplot()
+
+aov_data_f <- ist_data %>% 
+  filter(sex =="F") %>% 
+  select(stype, rsbp)
+
+aov_fit_f <- aov(rsbp~stype, data = aov_data_f)
+
+summary(aov_fit_f)
+
+
+aov_data_m <- ist_data %>% 
+  filter(sex =="M") %>% 
+  select(stype, rsbp)
+
+aov_fit_m <- aov(rsbp~stype, data = aov_data_m)
+
+summary(aov_fit_m)
+
+```
+
+
+
+## Wilcox Test
+```{r wilcox_test}
+library(gapminder)
+
+gapdata <- gapminder
+
+# africa_data_2 <- gapdata %>% 
+#   filter(year %in% c(1982, 2007)) %>% 
+#   filter(continent %in% c("Africa"))
+#   
+# p2 <-  africa_data_2 %>% 
+#   ggplot(aes(x = lifeExp))+
+#   geom_histogram(bins = 15)+
+#   facet_wrap(~year)
+# 
+# p2
+
+
+africa_data <- gapdata %>% 
+  filter(year %in% 1982:2007) %>% 
+  filter(continent %in% c("Africa"))
+  
+p1 <-  africa_data %>% 
+  ggplot(aes(x = lifeExp))+
+  geom_histogram(bins = 15)+
+  facet_wrap(~year)
+
+p1
+
+p2 <- africa_data %>% 
+  ggplot(aes(sample = lifeExp))+
+  geom_qq()+
+  geom_qq_line(colour = "blue")+
+  facet_wrap(~year)
+  
+p2
+
+p3 <- africa_data %>% 
+  ggplot(aes(x = factor(year), y = lifeExp)) +
+  geom_boxplot(aes(fill = factor(year)))+
+  geom_jitter(alpha = 0.9)
+p3
+
+
+library(patchwork)
+p1 / p2 | p3
+
+africa_data_2 %>% 
+  wilcox.test(lifeExp ~year, data = .)
+  
+  wilcox.test(lifeExp ~ year, data = africa_data_2)
+              
+```
+
+
+
+##Propensity Score
+```{r propensity_match_1}
+
+
+library(MatchIt)
+
+currentDataset <- read_csv("https://raw.githubusercontent.com/gckc123/ExampleData/main/smoking_psyc_distress.csv")
+
+match_obj <- matchit(smoker ~ sex + indigeneity + high_school + partnered + remoteness + language + risky_alcohol + age,
+                     data = currentDataset,
+                     method = NULL,
+                     distance = "glm",
+                     ratio = 1,
+                     replace = FALSE)
+summary(match_obj)
+
+plot(match_obj, type = "jitter")
+plot(summary(match_obj), abs = FALSE)
+
+```
+
+
+```{r propensity_match_2}
+
+match_obj_2 <- matchit(smoker ~ sex + indigeneity + high_school + partnered + remoteness + language + risky_alcohol + age,
+                     data = currentDataset,
+                     method = "nearest",
+                     distance = "glm",
+                     ratio = 1,
+                     replace = FALSE)
+summary(match_obj_2)
+
+plot(match_obj_2, type = "jitter")
+plot(summary(match_obj_2), abs = FALSE)
+
+```
+
 
 ## Including Plots
 
